@@ -1,0 +1,71 @@
+// Offline renderer for the Compchild DSP core: reads a float/PCM WAV, processes it, writes 32-bit float WAV.
+// usage: render in.wav out.wav [threshold=5] [tc=3] [inputDb=0] [outputDb=0] [dc=0] [mode=0] [link=1]
+#include "../Source/dsp/VariMu.h"
+#include <cstdio>
+#include <cstdint>
+#include <cstring>
+#include <cstdlib>
+#include <vector>
+#include <string>
+
+static bool readWav (const char* path, std::vector<float>& L, std::vector<float>& R, int& sr)
+{
+    FILE* f = std::fopen (path, "rb"); if (! f) return false;
+    char id[4]; uint32_t sz; std::fread (id, 1, 4, f); std::fread (&sz, 4, 1, f); std::fread (id, 1, 4, f);
+    int fmt = 0, chn = 0, bits = 0; std::vector<uint8_t> data;
+    while (std::fread (id, 1, 4, f) == 4 && std::fread (&sz, 4, 1, f) == 1)
+    {
+        if (! std::memcmp (id, "fmt ", 4)) { std::vector<uint8_t> b (sz); std::fread (b.data(), 1, sz, f);
+            fmt = b[0] | b[1] << 8; chn = b[2] | b[3] << 8; sr = (int) (b[4] | b[5] << 8 | b[6] << 16 | (uint32_t) b[7] << 24); bits = b[14] | b[15] << 8;
+            if (fmt == 0xFFFE) fmt = b[24] | b[25] << 8; }
+        else if (! std::memcmp (id, "data", 4)) { data.resize (sz); std::fread (data.data(), 1, sz, f); }
+        else std::fseek (f, sz + (sz & 1), SEEK_CUR);
+    }
+    std::fclose (f);
+    const int bps = bits / 8; const size_t frames = data.size() / (bps * chn);
+    L.resize (frames); R.resize (frames);
+    for (size_t i = 0; i < frames; ++i)
+        for (int c = 0; c < std::min (chn, 2); ++c)
+        {
+            const uint8_t* p = data.data() + (i * chn + c) * bps; float v = 0;
+            if (fmt == 3 && bits == 32) std::memcpy (&v, p, 4);
+            else if (bits == 16) v = (int16_t) (p[0] | p[1] << 8) / 32768.0f;
+            else if (bits == 24) v = ((int32_t) ((p[0] << 8) | (p[1] << 16) | ((uint32_t) p[2] << 24)) >> 8) / 8388608.0f;
+            (c == 0 ? L : R)[i] = v;
+            if (chn == 1) R[i] = v;
+        }
+    return true;
+}
+
+static void writeWav (const char* path, const std::vector<float>& L, const std::vector<float>& R, int sr)
+{
+    FILE* f = std::fopen (path, "wb");
+    const uint32_t frames = (uint32_t) L.size(), dataSz = frames * 8, riff = 36 + dataSz, fmtSz = 16, rate = (uint32_t) sr, bpsec = rate * 8;
+    const uint16_t tag = 3, chn = 2, align = 8, bits = 32;
+    std::fwrite ("RIFF", 1, 4, f); std::fwrite (&riff, 4, 1, f); std::fwrite ("WAVEfmt ", 1, 8, f); std::fwrite (&fmtSz, 4, 1, f);
+    std::fwrite (&tag, 2, 1, f); std::fwrite (&chn, 2, 1, f); std::fwrite (&rate, 4, 1, f); std::fwrite (&bpsec, 4, 1, f);
+    std::fwrite (&align, 2, 1, f); std::fwrite (&bits, 2, 1, f); std::fwrite ("data", 1, 4, f); std::fwrite (&dataSz, 4, 1, f);
+    for (uint32_t i = 0; i < frames; ++i) { std::fwrite (&L[i], 4, 1, f); std::fwrite (&R[i], 4, 1, f); }
+    std::fclose (f);
+}
+
+int main (int argc, char** argv)
+{
+    if (argc < 3) { std::printf ("usage: render in.wav out.wav [threshold tc inputDb outputDb dc mode link]\n"); return 1; }
+    std::vector<float> L, R; int sr = 48000;
+    if (! readWav (argv[1], L, R, sr)) { std::printf ("cannot read %s\n", argv[1]); return 1; }
+    auto arg = [&] (int i, float d) { return argc > i ? (float) std::atof (argv[i]) : d; };
+    cc::VariMu vm; vm.prepare (sr);
+    vm.a.threshold = vm.b.threshold = arg (3, 5.0f);
+    vm.a.tc = vm.b.tc = (int) arg (4, 3.0f) - 1;
+    vm.a.inputDb = vm.b.inputDb = arg (5, 0.0f); vm.outputDb = arg (6, 0.0f);
+    vm.a.dcBias = vm.b.dcBias = arg (7, 0.0f);
+    vm.mode = (cc::Mode) (int) arg (8, 0.0f); vm.link = arg (9, 1.0f) > 0.5f;
+    if (const char* d = std::getenv ("CC_DET")) { float t = 0, o = 0; std::sscanf (d, "%f,%f", &t, &o); vm.setDetector (t, o); }
+    if (const char* d = std::getenv ("CC_MOD")) { float b = 0, pw = 1, fc = 200; std::sscanf (d, "%f,%f,%f", &b, &pw, &fc); vm.setModulation (b, pw, fc); }
+    const int block = 512;
+    for (size_t i = 0; i < L.size(); i += block)
+        vm.process (L.data() + i, R.data() + i, (int) std::min<size_t> (block, L.size() - i));
+    writeWav (argv[2], L, R, sr);
+    return 0;
+}
