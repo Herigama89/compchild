@@ -5,17 +5,40 @@ namespace
 {
     constexpr int kW = 1176, kH = 564;
 
-    // VU meters: face top-left corners, needle pivot inside the face, needle length
+    // VU meters: face top-left corners, needle pivot (centre of the dome), needle length
     constexpr float vuLeft[2] = { 378.0f, 593.0f };
-    constexpr float vuTop = 60.0f, pivotX = 102.5f, pivotY = 114.7f, needleLen = 80.0f;
-    constexpr float needleRest = -52.0f, needleZero = 0.0f;   // left peg / 0 dB GR mark
+    constexpr float vuTop = 60.0f, pivotX = 102.5f, pivotY = 114.7f, needleLen = 79.0f;
+    constexpr float faceScale = 205.0f / 486.0f;              // face artwork coordinates -> editor
 
-    // power button + LED, link button (editor coordinates, from the design)
-    const juce::Point<float> powerCentre { 738.0f, 476.0f };
-    const juce::Point<float> ledCentre   { 758.5f, 475.5f };
-    const juce::Rectangle<int> linkBounds { 554, 226, 68, 24 };
+    // VU law: deflection follows voltage, +3 VU = full scale, sweep -50..+50 degrees
+    float vuAngle (float vu) { return -50.0f + 100.0f * std::pow (10.0f, vu / 20.0f) / std::pow (10.0f, 3.0f / 20.0f); }
+    constexpr float needleRest = -50.0f;                       // left stop (power off)
 
-    const juce::Colour orange (0xffffb020), orangeDeep (0xffff7a00);
+    // glass window of the meter face (same shape the face artwork was cleaned with)
+    juce::Path glassPath (float left)
+    {
+        juce::Path p;
+        auto px = [&] (float x) { return left + x * faceScale; };
+        auto py = [&] (float y) { return vuTop + y * faceScale; };
+        p.startNewSubPath (px (46.0f), py (262.0f));
+        for (int i = 0; i <= 60; ++i)
+        {
+            const float x = 46.0f + (440.0f - 46.0f) * (float) i / 60.0f, t = (x - 243.0f) / 203.0f;
+            p.lineTo (px (x), py (40.0f + 92.0f * t * t + 4.0f));
+        }
+        p.lineTo (px (440.0f), py (262.0f));
+        p.closeSubPath();
+        return p;
+    }
+    // dome sprite position inside the face (artwork made at 4x the 205x161 face)
+    const juce::Rectangle<float> domeBox { 357.0f / 4.0f, 406.0f / 4.0f, 105.0f / 4.0f, 54.0f / 4.0f };
+
+    // LINK (bottom left) and POWER (bottom right): button centres and the jewel lamps above them
+    // (the lamp and its word are the clickable area)
+    const juce::Point<float> linkLamp  { 188.4f, 444.4f }, powerLamp { 991.6f, 444.4f };
+    const juce::Rectangle<float> hitArea { 70.0f, 50.0f };   // centred on lamp + label
+
+    const juce::Colour orange (0xffffb020), orangeDeep (0xffff7a00), lampRed (0xffff2a12);
 
     juce::Image loadPng (const void* data, int size) { return juce::ImageCache::getFromMemory (data, size); }
 }
@@ -47,7 +70,7 @@ void CompchildLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, in
     else if (kind == 2)   // mode: L/R, LAT/VERT, MID/SIDE
     {
         const int idx = juce::roundToInt (pos * 2.0f);
-        angleDeg = -50.0f + 50.0f * (float) idx - 15.0f;
+        angleDeg = -90.0f + 60.0f * (float) idx - 15.0f;     // L/R, LAT/VERT, MID/SIDE
         img = &knobPointer;
     }
     else                  // big black knob: image is drawn at its minimum position
@@ -68,69 +91,21 @@ void CompchildLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, in
 }
 
 //==============================================================================
-void PowerButton::paintButton (juce::Graphics& g, bool over, bool)
+void PanelButton::paintButton (juce::Graphics& g, bool over, bool)
 {
-    const auto b = getLocalBounds().toFloat().reduced (1.0f);
-    const bool on = getToggleState();
-
-    if (on)
+    // nothing to draw: the lamp (editor) and the engraved word (panel) are the button
+    if (over)
     {
-        for (int i = 3; i >= 1; --i)
-        {
-            g.setColour (orangeDeep.withAlpha (0.10f * (float) i));
-            g.fillEllipse (b.expanded ((float) (4 - i) * 2.0f).reduced (0.0f));
-        }
+        g.setColour (juce::Colours::white.withAlpha (0.04f));
+        g.fillRoundedRectangle (getLocalBounds().toFloat().reduced (2.0f), 6.0f);
     }
-    juce::ColourGradient grad (juce::Colour (0xff2c2b28), b.getX() + b.getWidth() * 0.4f, b.getY() + b.getHeight() * 0.35f,
-                               juce::Colour (0xff0b0b0a), b.getRight(), b.getBottom(), true);
-    g.setGradientFill (grad);
-    g.fillEllipse (b);
-    g.setColour (juce::Colour (over ? 0xff57534a : 0xff3a3833));
-    g.drawEllipse (b, 1.5f);
-
-    if (icon.isValid())
-    {
-        const auto ib = b.reduced (b.getWidth() * 0.12f);
-        if (on)
-        {
-            g.setColour (orange);
-            g.drawImage (icon, ib, juce::RectanglePlacement::centred, true);   // tint the icon orange
-        }
-        else
-        {
-            g.setOpacity (0.75f);
-            g.drawImage (icon, ib, juce::RectanglePlacement::centred, false);
-        }
-    }
-}
-
-void LinkButton::paintButton (juce::Graphics& g, bool over, bool)
-{
-    const auto b = getLocalBounds().toFloat().reduced (0.5f);
-    const bool on = getToggleState();
-    g.setColour (juce::Colour (0xff0f0f0e));
-    g.fillRoundedRectangle (b, b.getHeight() * 0.5f);
-    g.setColour (juce::Colour (over ? 0xff57534a : 0xff3a3833));
-    g.drawRoundedRectangle (b, b.getHeight() * 0.5f, 1.0f);
-
-    const juce::Rectangle<float> led (b.getX() + 12.0f, b.getCentreY() - 3.5f, 7.0f, 7.0f);
-    if (on)
-    {
-        g.setColour (orangeDeep.withAlpha (0.35f));
-        g.fillEllipse (led.expanded (3.0f));
-    }
-    g.setColour (on ? orange : juce::Colour (0xff3a3833));
-    g.fillEllipse (led);
-
-    g.setColour (on ? juce::Colour (0xffffc061) : juce::Colour (0xff8a8273));
-    g.setFont (juce::Font (juce::FontOptions (11.0f, juce::Font::bold)).withExtraKerningFactor (0.14f));
-    g.drawText ("LINK", b.withTrimmedLeft (24.0f), juce::Justification::centredLeft);
 }
 
 //==============================================================================
 CompchildEditor::CompchildEditor (CompchildProcessor& p) : AudioProcessorEditor (&p), proc (p)
 {
     background = loadPng (BinaryData::background_png, BinaryData::background_pngSize);
+    dome       = loadPng (BinaryData::vu_dome_png,    BinaryData::vu_dome_pngSize);
     power.icon = loadPng (BinaryData::power_png, BinaryData::power_pngSize);
 
     // layout from the Compchild wood-panel design (1176 x 564)
@@ -168,7 +143,7 @@ CompchildEditor::CompchildEditor (CompchildProcessor& p) : AudioProcessorEditor 
     link.setTooltip ("Link: channel A controls both channels");
     powerAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (proc.apvts, ids::power, power);
     linkAtt  = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (proc.apvts, ids::link,  link);
-    link.onClick = [this] { if (link.getToggleState()) copyAtoB(); };
+    link.onClick = [this] { if (link.getToggleState()) copyAtoB(); repaint(); };
     power.onClick = [this] { repaint(); };
 
     setSize (kW, kH);
@@ -222,8 +197,8 @@ void CompchildEditor::resized()
         const float cx = (float) props["cx"], cy = (float) props["cy"], size = (float) props["size"];
         k->slider.setBounds (juce::Rectangle<float> (size, size).withCentre ({ cx, cy }).transformedBy (juce::AffineTransform::scale (sc)).toNearestInt());
     }
-    power.setBounds (juce::Rectangle<float> (24.0f, 24.0f).withCentre (powerCentre).transformedBy (juce::AffineTransform::scale (sc)).toNearestInt());
-    link.setBounds (linkBounds.toFloat().transformedBy (juce::AffineTransform::scale (sc)).toNearestInt());
+    power.setBounds (hitArea.withCentre (powerLamp.translated (0.0f, 12.0f)).transformedBy (juce::AffineTransform::scale (sc)).toNearestInt());
+    link.setBounds  (hitArea.withCentre (linkLamp.translated  (0.0f, 12.0f)).transformedBy (juce::AffineTransform::scale (sc)).toNearestInt());
 }
 
 void CompchildEditor::paint (juce::Graphics& g)
@@ -241,29 +216,53 @@ void CompchildEditor::paintOverChildren (juce::Graphics& g)
     const float sc = (float) getWidth() / (float) kW;
     g.addTransform (juce::AffineTransform::scale (sc));
 
-    // VU needles
+    // VU needles: pivot under the dome, tapered, with a soft shadow on the paper, clipped to the glass
     for (int i = 0; i < 2; ++i)
     {
+        juce::Graphics::ScopedSaveState ss (g);
+        g.reduceClipRegion (glassPath (vuLeft[i]));
         const juce::Point<float> pivot (vuLeft[i] + pivotX, vuTop + pivotY);
         const float a = juce::degreesToRadians (needle[i]);
-        const juce::Point<float> tip (pivot.x + needleLen * std::sin (a), pivot.y - needleLen * std::cos (a));
-        const juce::Point<float> base (pivot.x + 22.0f * std::sin (a), pivot.y - 22.0f * std::cos (a));
-        g.setColour (juce::Colours::black.withAlpha (0.25f));
-        g.drawLine ({ base.translated (1.5f, 2.0f), tip.translated (1.5f, 2.0f) }, 2.0f);
-        g.setColour (juce::Colour (0xff1b1510));
-        g.drawLine ({ base, tip }, 1.8f);
+        const juce::Point<float> dir (std::sin (a), -std::cos (a)), nrm (std::cos (a), std::sin (a));
+        auto needlePath = [&] (juce::Point<float> o)
+        {
+            juce::Path p;
+            const auto base = pivot + o, tip = pivot + o + dir * needleLen;
+            p.startNewSubPath (base + nrm * 1.6f);
+            p.lineTo (tip + nrm * 0.45f);
+            p.lineTo (tip - nrm * 0.45f);
+            p.lineTo (base - nrm * 1.6f);
+            p.closeSubPath();
+            return p;
+        };
+        g.setColour (juce::Colours::black.withAlpha (0.10f)); g.fillPath (needlePath ({ 2.6f, 3.4f }));
+        g.setColour (juce::Colours::black.withAlpha (0.16f)); g.fillPath (needlePath ({ 1.6f, 2.2f }));
+        g.setColour (juce::Colour (0xff17120d));              g.fillPath (needlePath ({ 0.0f, 0.0f }));
+        if (dome.isValid())
+            g.drawImage (dome, domeBox.translated (vuLeft[i], vuTop));
     }
 
-    // power LED
-    const bool on = power.getToggleState();
-    const auto led = juce::Rectangle<float> (7.0f, 7.0f).withCentre (ledCentre);
-    if (on)
+    // jewel lamps above LINK and POWER
+    auto lamp = [&] (juce::Point<float> c, bool lit)
     {
-        g.setColour (orangeDeep.withAlpha (0.35f));
-        g.fillEllipse (led.expanded (4.0f));
-    }
-    g.setColour (on ? orange : juce::Colour (0xff3a3833));
-    g.fillEllipse (led);
+        const auto r = juce::Rectangle<float> (12.0f, 12.0f).withCentre (c);
+        if (lit)
+        {
+            for (int i = 3; i >= 1; --i) { g.setColour (lampRed.withAlpha (0.10f * (float) i)); g.fillEllipse (r.expanded (2.5f * (float) (4 - i))); }
+            juce::ColourGradient jg (juce::Colour (0xffffb4a4), c.x - 1.5f, c.y - 2.0f, juce::Colour (0xffc4140a), r.getRight(), r.getBottom(), true);
+            g.setGradientFill (jg);
+        }
+        else
+        {
+            juce::ColourGradient jg (juce::Colour (0xff5a1a14), c.x - 1.5f, c.y - 2.0f, juce::Colour (0xff1a0806), r.getRight(), r.getBottom(), true);
+            g.setGradientFill (jg);
+        }
+        g.fillEllipse (r);
+        g.setColour (juce::Colours::white.withAlpha (lit ? 0.55f : 0.18f));
+        g.fillEllipse (juce::Rectangle<float> (3.0f, 2.2f).withCentre (c.translated (-2.0f, -2.6f)));
+    };
+    lamp (linkLamp,  link.getToggleState());
+    lamp (powerLamp, power.getToggleState());
 }
 
 void CompchildEditor::timerCallback()
@@ -273,7 +272,8 @@ void CompchildEditor::timerCallback()
     bool changed = false;
     for (int i = 0; i < 2; ++i)
     {
-        const float target = on ? needleZero - (needleZero - needleRest) * juce::jlimit (0.0f, 1.0f, gr[i] / 20.0f) : needleRest;
+        // reads gain reduction on the VU scale: 0 GR = "0", 3 dB = "-3", 10 dB = "-10" ...
+        const float target = on ? vuAngle (-juce::jlimit (0.0f, 23.0f, gr[i])) : needleRest;
         const float next = needle[i] + (target - needle[i]) * 0.28f;     // ~300 ms VU-style ballistics at 30 Hz
         if (std::abs (next - needle[i]) > 0.01f) { needle[i] = next; changed = true; }
     }

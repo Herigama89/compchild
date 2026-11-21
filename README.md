@@ -6,9 +6,9 @@ Stereo vari-mu tube limiter (AU / VST3, macOS universal) on a vintage wood-panel
 - **Channel A / B** — Threshold (0–10, 0 = no compression), Input Gain (±10 dB), Time Constant 1–6, DC Bias (knee shape)
 - **Output** — ±10 dB
 - **Mode** — L/R, Lat/Vert (sum/difference, A = lateral, B = vertical), Mid/Side (only the mid is compressed)
-- **Link** — channel A's controls drive both channels (B follows on screen)
-- **Power** — bypass; glows orange when on
-- **GR A / GR B meters** — gain reduction, 0 to 20 dB
+- **Link** (red lamp, bottom left) — channel A’s controls drive both channels (B follows on screen)
+- **Power** (red lamp, bottom right) — bypass when off
+- **GR A / GR B meters** — VU scale; needle rests on 0 and reads gain reduction (-3 = 3 dB, -10 = 10 dB)
 
 ## Sound model (Source/dsp/VariMu.h)
 Fitted to black-box measurements of a reference vari-mu plugin (docs/measurements.json):

@@ -12,19 +12,16 @@ public:
     juce::Image knobBig, knobPointer;
 };
 
-class PowerButton : public juce::Button
+// LINK / POWER: invisible click area over the jewel lamp and its engraved word
+class PanelButton : public juce::Button
 {
 public:
-    PowerButton() : juce::Button ("Power") { setClickingTogglesState (true); }
+    enum class Icon { Power, Link };
+    PanelButton (const juce::String& name, Icon i) : juce::Button (name), iconType (i) { setClickingTogglesState (true); }
     void paintButton (juce::Graphics&, bool over, bool down) override;
-    juce::Image icon;
-};
-
-class LinkButton : public juce::Button
-{
-public:
-    LinkButton() : juce::Button ("Link") { setClickingTogglesState (true); }
-    void paintButton (juce::Graphics&, bool over, bool down) override;
+    juce::Image icon;   // power symbol artwork (Link is drawn)
+private:
+    Icon iconType;
 };
 
 class CompchildEditor : public juce::AudioProcessorEditor, private juce::Timer
@@ -50,14 +47,14 @@ private:
 
     CompchildProcessor& proc;
     CompchildLookAndFeel lnf;
-    juce::Image background;
+    juce::Image background, dome;
 
     Knob thA, inA, tcA, dcA, thB, inB, tcB, dcB, output, mode;
-    PowerButton power;
-    LinkButton link;
+    PanelButton link  { "Link",  PanelButton::Icon::Link };
+    PanelButton power { "Power", PanelButton::Icon::Power };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> powerAtt, linkAtt;
 
-    float needle[2] { -52.0f, -52.0f };   // displayed needle angles (degrees)
+    float needle[2] { -50.0f, -50.0f };   // displayed needle angles (degrees)
     bool syncing = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (CompchildEditor)

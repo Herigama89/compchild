@@ -49,7 +49,8 @@ juce_add_binary_data(CompchildAssets SOURCES
     Assets/background.png
     Assets/knob_big.png
     Assets/knob_pointer.png
-    Assets/power.png)
+    Assets/power.png
+    Assets/vu_dome.png)
 set_target_properties(CompchildAssets PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_sources(Compchild PRIVATE
