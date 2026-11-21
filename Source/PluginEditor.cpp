@@ -106,6 +106,9 @@ CompchildEditor::CompchildEditor (CompchildProcessor& p) : AudioProcessorEditor 
 {
     background = loadPng (BinaryData::background_png, BinaryData::background_pngSize);
     dome       = loadPng (BinaryData::vu_dome_png,    BinaryData::vu_dome_pngSize);
+    glass      = loadPng (BinaryData::vu_glass_png,   BinaryData::vu_glass_pngSize);
+    blackFace  = loadPng (BinaryData::vu_face_black_png, BinaryData::vu_face_black_pngSize);
+    skin = (int) proc.apvts.state.getProperty ("meterSkin", 0) == 1 ? Skin::Black : Skin::Cream;
     power.icon = loadPng (BinaryData::power_png, BinaryData::power_pngSize);
 
     // layout from the Compchild wood-panel design (1176 x 564)
@@ -217,8 +220,16 @@ void CompchildEditor::paintOverChildren (juce::Graphics& g)
     g.addTransform (juce::AffineTransform::scale (sc));
 
     // VU needles: pivot under the dome, tapered, with a soft shadow on the paper, clipped to the glass
+    const bool black = skin == Skin::Black;
     for (int i = 0; i < 2; ++i)
     {
+        if (black && blackFace.isValid())   // black skin: the whole meter face is replaced
+        {
+            juce::Graphics::ScopedSaveState fs (g);
+            juce::Path r; r.addRoundedRectangle (vuLeft[i], vuTop, 205.0f, 161.0f, 10.0f);
+            g.reduceClipRegion (r);
+            g.drawImage (blackFace, juce::Rectangle<float> (vuLeft[i], vuTop, 205.0f, 161.0f));
+        }
         juce::Graphics::ScopedSaveState ss (g);
         g.reduceClipRegion (glassPath (vuLeft[i]));
         const juce::Point<float> pivot (vuLeft[i] + pivotX, vuTop + pivotY);
@@ -235,11 +246,21 @@ void CompchildEditor::paintOverChildren (juce::Graphics& g)
             p.closeSubPath();
             return p;
         };
-        g.setColour (juce::Colours::black.withAlpha (0.10f)); g.fillPath (needlePath ({ 2.6f, 3.4f }));
-        g.setColour (juce::Colours::black.withAlpha (0.16f)); g.fillPath (needlePath ({ 1.6f, 2.2f }));
-        g.setColour (juce::Colour (0xff17120d));              g.fillPath (needlePath ({ 0.0f, 0.0f }));
+        if (black)
+        {
+            g.setColour (juce::Colours::black.withAlpha (0.35f)); g.fillPath (needlePath ({ 2.0f, 2.8f }));
+            g.setColour (juce::Colour (0xffeae6dc));              g.fillPath (needlePath ({ 0.0f, 0.0f }));   // light needle on black
+        }
+        else
+        {
+            g.setColour (juce::Colours::black.withAlpha (0.10f)); g.fillPath (needlePath ({ 2.6f, 3.4f }));
+            g.setColour (juce::Colours::black.withAlpha (0.16f)); g.fillPath (needlePath ({ 1.6f, 2.2f }));
+            g.setColour (juce::Colour (0xff17120d));              g.fillPath (needlePath ({ 0.0f, 0.0f }));   // dark needle on cream
+        }
         if (dome.isValid())
             g.drawImage (dome, domeBox.translated (vuLeft[i], vuTop));
+        if (glass.isValid())   // the glass sits in front of the needle
+            g.drawImage (glass, juce::Rectangle<float> (vuLeft[i], vuTop, 205.0f, 161.0f));
     }
 
     // jewel lamps above LINK and POWER
@@ -263,6 +284,36 @@ void CompchildEditor::paintOverChildren (juce::Graphics& g)
     };
     lamp (linkLamp,  link.getToggleState());
     lamp (powerLamp, power.getToggleState());
+}
+
+void CompchildEditor::setSkin (Skin s)
+{
+    skin = s;
+    proc.apvts.state.setProperty ("meterSkin", (int) s, nullptr);   // saved with the project
+    repaint();
+}
+
+void CompchildEditor::mouseDown (const juce::MouseEvent& e)
+{
+    const float sc = (float) getWidth() / (float) kW;
+    const auto p = e.position / sc;
+    const bool onMeter = juce::Rectangle<float> (vuLeft[0], vuTop, 205.0f, 161.0f).contains (p)
+                      || juce::Rectangle<float> (vuLeft[1], vuTop, 205.0f, 161.0f).contains (p);
+
+    if (e.mods.isPopupMenu())
+    {
+        juce::PopupMenu m;
+        m.addSectionHeader ("Meter skin");
+        m.addItem (1, "Cream", true, skin == Skin::Cream);
+        m.addItem (2, "Black", true, skin == Skin::Black);
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea ({ e.getScreenX(), e.getScreenY(), 1, 1 }),
+                         [safe = juce::Component::SafePointer<CompchildEditor> (this)] (int r)
+                         {
+                             if (safe != nullptr && r > 0) safe->setSkin (r == 2 ? Skin::Black : Skin::Cream);
+                         });
+    }
+    else if (onMeter)
+        setSkin (skin == Skin::Cream ? Skin::Black : Skin::Cream);
 }
 
 void CompchildEditor::timerCallback()

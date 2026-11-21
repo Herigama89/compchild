@@ -7,6 +7,7 @@ int main (int argc, char** argv)
     CompchildProcessor proc;
     proc.prepareToPlay (48000.0, 512);
     if (argc > 2) { proc.grA.store (6.0f); proc.grB.store (12.0f); }
+    if (argc > 3) proc.apvts.state.setProperty ("meterSkin", 1, nullptr);   // black skin
     std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
     if (auto* e = dynamic_cast<CompchildEditor*> (ed.get())) e->settleMetersForSnapshot();
     auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);

@@ -33,6 +33,10 @@ public:
     void paintOverChildren (juce::Graphics&) override;
     void resized() override;
     void settleMetersForSnapshot() { for (int i = 0; i < 60; ++i) timerCallback(); }
+    void mouseDown (const juce::MouseEvent&) override;
+
+    enum class Skin { Cream = 0, Black = 1 };
+    void setSkin (Skin);
 
 private:
     enum class Kind { Big, TimeConstant, Mode };
@@ -47,7 +51,8 @@ private:
 
     CompchildProcessor& proc;
     CompchildLookAndFeel lnf;
-    juce::Image background, dome;
+    juce::Image background, dome, glass, blackFace;
+    Skin skin = Skin::Cream;
 
     Knob thA, inA, tcA, dcA, thB, inB, tcB, dcB, output, mode;
     PanelButton link  { "Link",  PanelButton::Icon::Link };

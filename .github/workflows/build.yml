@@ -42,25 +42,25 @@ jobs:
           cp -R "build/Compchild_artefacts/Release/VST3/Compchild.vst3" $OUT/root/vst3/
           cp -R "build/Compchild_artefacts/Release/AU/Compchild.component" $OUT/root/au/
           codesign --force --deep -s - "$OUT/root/vst3/Compchild.vst3" "$OUT/root/au/Compchild.component"
-          pkgbuild --root $OUT/root/vst3 --install-location "/Library/Audio/Plug-Ins/VST3" --identifier com.herigama.compchild.vst3 --version 1.0.0 $OUT/vst3.pkg
-          pkgbuild --root $OUT/root/au   --install-location "/Library/Audio/Plug-Ins/Components" --identifier com.herigama.compchild.au --version 1.0.0 $OUT/au.pkg
-          productbuild --package $OUT/vst3.pkg --package $OUT/au.pkg "$OUT/Compchild-1.0.0-Mac.pkg"
-          (cd $OUT/root && zip -qry "../Compchild-1.0.0-Mac.zip" vst3 au)
+          pkgbuild --root $OUT/root/vst3 --install-location "/Library/Audio/Plug-Ins/VST3" --identifier com.herigama.compchild.vst3 --version 1.1.0 $OUT/vst3.pkg
+          pkgbuild --root $OUT/root/au   --install-location "/Library/Audio/Plug-Ins/Components" --identifier com.herigama.compchild.au --version 1.1.0 $OUT/au.pkg
+          productbuild --package $OUT/vst3.pkg --package $OUT/au.pkg "$OUT/Compchild-1.1.0-Mac.pkg"
+          (cd $OUT/root && zip -qry "../Compchild-1.1.0-Mac.zip" vst3 au)
 
       - uses: actions/upload-artifact@v4
         with:
           name: Compchild-Mac
           path: |
-            dist/Compchild-1.0.0-Mac.pkg
-            dist/Compchild-1.0.0-Mac.zip
+            dist/Compchild-1.1.0-Mac.pkg
+            dist/Compchild-1.1.0-Mac.zip
 
       - name: Publish release (download link)
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="v1.0.0-build${{ github.run_number }}"
-          gh release create "$TAG" dist/Compchild-1.0.0-Mac.pkg dist/Compchild-1.0.0-Mac.zip \
-            --title "Compchild 1.0.0 (build ${{ github.run_number }})" \
+          TAG="v1.1.0-build${{ github.run_number }}"
+          gh release create "$TAG" dist/Compchild-1.1.0-Mac.pkg dist/Compchild-1.1.0-Mac.zip \
+            --title "Compchild 1.1.0 (build ${{ github.run_number }})" \
             --notes "Mac installer: AU + VST3, universal (Apple Silicon + Intel). Ad-hoc signed — on first launch, if macOS blocks the installer, right-click it → Open." \
             --latest

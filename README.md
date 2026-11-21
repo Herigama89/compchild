@@ -8,7 +8,8 @@ Stereo vari-mu tube limiter (AU / VST3, macOS universal) on a vintage wood-panel
 - **Mode** — L/R, Lat/Vert (sum/difference, A = lateral, B = vertical), Mid/Side (only the mid is compressed)
 - **Link** (red lamp, bottom left) — channel A’s controls drive both channels (B follows on screen)
 - **Power** (red lamp, bottom right) — bypass when off
-- **GR A / GR B meters** — VU scale; needle rests on 0 and reads gain reduction (-3 = 3 dB, -10 = 10 dB)
+- **GR A / GR B meters** — VU-style GR scale; needle rests on 0 and reads gain reduction (3 = 3 dB, 10 = 10 dB)
+- **Meter skins** — Cream (default) or Black: click a meter to switch, or right-click the panel → Meter skin. Saved with the project.
 
 ## Sound model (Source/dsp/VariMu.h)
 Fitted to black-box measurements of a reference vari-mu plugin (docs/measurements.json):
