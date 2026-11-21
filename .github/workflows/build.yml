@@ -55,12 +55,12 @@ jobs:
             dist/OPT-2A-1.0.0-Mac.zip
 
       - name: Publish release (download link)
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/opt-2a'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="v1.0.0-build${{ github.run_number }}"
+          TAG="opt2a-v1.0.0-build${{ github.run_number }}"
           gh release create "$TAG" dist/OPT-2A-1.0.0-Mac.pkg dist/OPT-2A-1.0.0-Mac.zip \
             --title "OPT-2A 1.0.0 (build ${{ github.run_number }})" \
             --notes "Mac installer: AU + VST3, universal (Apple Silicon + Intel). Ad-hoc signed — on first launch, if macOS blocks the installer, right-click it → Open." \
-            --latest
+            --latest=false
