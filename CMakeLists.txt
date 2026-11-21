@@ -5,7 +5,7 @@ if(APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)   # universal binary
 endif()
 
-project(Compchild VERSION 1.1.0)
+project(Compchild VERSION 1.2.0)
 
 set(CC_COMPANY     "Herigama Audio")
 set(CC_PRODUCT     "Compchild")
@@ -52,7 +52,8 @@ juce_add_binary_data(CompchildAssets SOURCES
     Assets/power.png
     Assets/vu_dome.png
     Assets/vu_glass.png
-    Assets/vu_face_black.png)
+    Assets/vu_face_black.png
+    docs/manual.html)
 set_target_properties(CompchildAssets PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_sources(Compchild PRIVATE

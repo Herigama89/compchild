@@ -11,6 +11,9 @@ Stereo vari-mu tube limiter (AU / VST3, macOS universal) on a vintage wood-panel
 - **GR A / GR B meters** — VU-style GR scale; needle rests on 0 and reads gain reduction (3 = 3 dB, 10 = 10 dB)
 - **Meter skins** — Cream (default) or Black: click a meter to switch, or right-click the panel → Meter skin. Saved with the project.
 
+## Manual
+A full illustrated manual (`docs/manual.html`) is built into the plugin: click the **?** beside CHANNEL B, or right-click the panel → *Open manual…*.
+
 ## Sound model (Source/dsp/VariMu.h)
 Fitted to black-box measurements of a reference vari-mu plugin (docs/measurements.json):
 - clean below threshold, +8.55 dB fixed tube-stage gain at default Input/Output

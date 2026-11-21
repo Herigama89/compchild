@@ -37,6 +37,7 @@ namespace
     // (the lamp and its word are the clickable area)
     const juce::Point<float> linkLamp  { 188.4f, 444.4f }, powerLamp { 991.6f, 444.4f };
     const juce::Rectangle<float> hitArea { 70.0f, 50.0f };   // centred on lamp + label
+    const juce::Point<float> helpCentre { 1001.0f, 76.0f };   // "?" beside the CHANNEL B legend
 
     const juce::Colour orange (0xffffb020), orangeDeep (0xffff7a00), lampRed (0xffff2a12);
 
@@ -101,6 +102,28 @@ void PanelButton::paintButton (juce::Graphics& g, bool over, bool)
     }
 }
 
+void HelpButton::paintButton (juce::Graphics& g, bool over, bool)
+{
+    const auto b = getLocalBounds().toFloat().reduced (1.5f);
+    const auto ink = juce::Colour (0xffe9dfc6).withAlpha (over ? 0.95f : 0.62f);   // same engraving as the panel text
+    g.setColour (ink);
+    g.drawEllipse (b, 1.3f);
+    g.setFont (juce::Font (juce::FontOptions (b.getHeight() * 0.72f, juce::Font::bold)));
+    g.drawText ("?", b.translated (0.0f, 0.5f), juce::Justification::centred);
+}
+
+void CompchildEditor::openManual()
+{
+    // the manual is built into the plugin; write it out and open it in the default browser
+    auto dir = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+                   .getChildFile ("Herigama Audio").getChildFile ("Compchild");
+    dir.createDirectory();
+    auto f = dir.getChildFile ("Compchild Manual.html");
+    if (f.getSize() != (juce::int64) BinaryData::manual_htmlSize)
+        f.replaceWithData (BinaryData::manual_html, (size_t) BinaryData::manual_htmlSize);
+    f.startAsProcess();
+}
+
 //==============================================================================
 CompchildEditor::CompchildEditor (CompchildProcessor& p) : AudioProcessorEditor (&p), proc (p)
 {
@@ -147,6 +170,10 @@ CompchildEditor::CompchildEditor (CompchildProcessor& p) : AudioProcessorEditor 
     powerAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (proc.apvts, ids::power, power);
     linkAtt  = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (proc.apvts, ids::link,  link);
     link.onClick = [this] { if (link.getToggleState()) copyAtoB(); repaint(); };
+    addAndMakeVisible (help);
+    help.setTooltip ("Open the Compchild manual");
+    help.setMouseCursor (juce::MouseCursor::PointingHandCursor);
+    help.onClick = [this] { openManual(); };
     power.onClick = [this] { repaint(); };
 
     setSize (kW, kH);
@@ -202,6 +229,7 @@ void CompchildEditor::resized()
     }
     power.setBounds (hitArea.withCentre (powerLamp.translated (0.0f, 12.0f)).transformedBy (juce::AffineTransform::scale (sc)).toNearestInt());
     link.setBounds  (hitArea.withCentre (linkLamp.translated  (0.0f, 12.0f)).transformedBy (juce::AffineTransform::scale (sc)).toNearestInt());
+    help.setBounds  (juce::Rectangle<float> (15.0f, 15.0f).withCentre (helpCentre).transformedBy (juce::AffineTransform::scale (sc)).toNearestInt());
 }
 
 void CompchildEditor::paint (juce::Graphics& g)
@@ -306,10 +334,14 @@ void CompchildEditor::mouseDown (const juce::MouseEvent& e)
         m.addSectionHeader ("Meter skin");
         m.addItem (1, "Cream", true, skin == Skin::Cream);
         m.addItem (2, "Black", true, skin == Skin::Black);
+        m.addSeparator();
+        m.addItem (3, "Open manual...");
         m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea ({ e.getScreenX(), e.getScreenY(), 1, 1 }),
                          [safe = juce::Component::SafePointer<CompchildEditor> (this)] (int r)
                          {
-                             if (safe != nullptr && r > 0) safe->setSkin (r == 2 ? Skin::Black : Skin::Cream);
+                             if (safe == nullptr || r <= 0) return;
+                             if (r == 3) safe->openManual();
+                             else        safe->setSkin (r == 2 ? Skin::Black : Skin::Cream);
                          });
     }
     else if (onMeter)

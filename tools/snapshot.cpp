@@ -1,6 +1,7 @@
 // Renders the Compchild editor to a PNG without a host (for interface checks).
 #include "../Source/PluginProcessor.h"
 #include "../Source/PluginEditor.h"
+#include <cstdlib>
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI init;
@@ -10,7 +11,8 @@ int main (int argc, char** argv)
     if (argc > 3) proc.apvts.state.setProperty ("meterSkin", 1, nullptr);   // black skin
     std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
     if (auto* e = dynamic_cast<CompchildEditor*> (ed.get())) e->settleMetersForSnapshot();
-    auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+    const float scale = std::getenv ("CC_SCALE") ? (float) std::atof (std::getenv ("CC_SCALE")) : 1.0f;
+    auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, scale);
     juce::File out (argc > 1 ? argv[1] : "snapshot.png");
     out.deleteFile();
     juce::FileOutputStream os (out);

@@ -24,6 +24,14 @@ private:
     Icon iconType;
 };
 
+// Engraved "?" that opens the manual
+class HelpButton : public juce::Button
+{
+public:
+    HelpButton() : juce::Button ("Manual") {}
+    void paintButton (juce::Graphics&, bool over, bool down) override;
+};
+
 class CompchildEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
@@ -57,6 +65,8 @@ private:
     Knob thA, inA, tcA, dcA, thB, inB, tcB, dcB, output, mode;
     PanelButton link  { "Link",  PanelButton::Icon::Link };
     PanelButton power { "Power", PanelButton::Icon::Power };
+    HelpButton help;
+    void openManual();
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> powerAtt, linkAtt;
 
     float needle[2] { -50.0f, -50.0f };   // displayed needle angles (degrees)
