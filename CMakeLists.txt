@@ -98,3 +98,6 @@ if(CC_TOOLS)
         JUCE_USE_XRANDR=0 JUCE_USE_XINERAMA=0 JUCE_USE_XRENDER=0 JUCE_USE_XCURSOR=0 JUCE_MODAL_LOOPS_PERMITTED=1)
     target_link_libraries(cc_snapshot PRIVATE CompchildAssets juce::juce_audio_utils juce::juce_recommended_config_flags)
 endif()
+
+# Black Tube — optical tube compressor, built alongside Compchild (BlackTube/CMakeLists.txt)
+add_subdirectory(BlackTube)

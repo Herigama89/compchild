@@ -24,10 +24,13 @@ jobs:
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
 
       - name: Build
-        run: cmake --build build --config Release --target Compchild_AU Compchild_VST3 dsp_test -j 4
+        run: cmake --build build --config Release --target Compchild_AU Compchild_VST3 dsp_test BlackTube_AU BlackTube_VST3 bt_dsp_test -j 4
 
       - name: DSP tests
         run: ./build/dsp_test
+
+      - name: Black Tube DSP tests
+        run: ./build/BlackTube/bt_dsp_test
 
       - name: Validate with pluginval
         continue-on-error: true
@@ -47,6 +50,28 @@ jobs:
           productbuild --package $OUT/vst3.pkg --package $OUT/au.pkg "$OUT/Compchild-1.2.0-Mac.pkg"
           (cd $OUT/root && zip -qry "../Compchild-1.2.0-Mac.zip" vst3 au)
 
+      - name: Validate Black Tube with pluginval
+        continue-on-error: true
+        run: ./pluginval.app/Contents/MacOS/pluginval --strictness-level 8 --validate-in-process "build/BlackTube/BlackTube_artefacts/Release/VST3/Black Tube.vst3"
+
+      - name: Package Black Tube (installer + zip)
+        run: |
+          OUT=dist/bt; mkdir -p $OUT/root/vst3 $OUT/root/au
+          cp -R "build/BlackTube/BlackTube_artefacts/Release/VST3/Black Tube.vst3" $OUT/root/vst3/
+          cp -R "build/BlackTube/BlackTube_artefacts/Release/AU/Black Tube.component" $OUT/root/au/
+          codesign --force --deep -s - "$OUT/root/vst3/Black Tube.vst3" "$OUT/root/au/Black Tube.component"
+          pkgbuild --root $OUT/root/vst3 --install-location "/Library/Audio/Plug-Ins/VST3" --identifier com.herigama.blacktube.vst3 --version 1.0.0 $OUT/vst3.pkg
+          pkgbuild --root $OUT/root/au   --install-location "/Library/Audio/Plug-Ins/Components" --identifier com.herigama.blacktube.au --version 1.0.0 $OUT/au.pkg
+          productbuild --package $OUT/vst3.pkg --package $OUT/au.pkg "dist/BlackTube-1.0.0-Mac.pkg"
+          (cd $OUT/root && zip -qry "../../BlackTube-1.0.0-Mac.zip" vst3 au)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BlackTube-Mac
+          path: |
+            dist/BlackTube-1.0.0-Mac.pkg
+            dist/BlackTube-1.0.0-Mac.zip
+
       - uses: actions/upload-artifact@v4
         with:
           name: Compchild-Mac
@@ -64,3 +89,14 @@ jobs:
             --title "Compchild 1.2.0 (build ${{ github.run_number }})" \
             --notes "Mac installer: AU + VST3, universal (Apple Silicon + Intel). Ad-hoc signed — on first launch, if macOS blocks the installer, right-click it → Open." \
             --latest
+
+      - name: Publish Black Tube release (download link)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="blacktube-v1.0.0-build${{ github.run_number }}"
+          gh release create "$TAG" dist/BlackTube-1.0.0-Mac.pkg dist/BlackTube-1.0.0-Mac.zip \
+            --title "Black Tube 1.0.0 (build ${{ github.run_number }})" \
+            --notes "Mac installer: AU + VST3, universal (Apple Silicon + Intel). Ad-hoc signed — on first launch, if macOS blocks the installer, right-click it → Open." \
+            --latest=false

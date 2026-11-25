@@ -1,5 +1,7 @@
 # Compchild
 
+> This repository also builds **Black Tube**, an optical tube compressor — see [BlackTube/README.md](BlackTube/README.md).
+
 Stereo vari-mu tube limiter (AU / VST3, macOS universal) on a vintage wood-panel interface.
 
 ## Controls
