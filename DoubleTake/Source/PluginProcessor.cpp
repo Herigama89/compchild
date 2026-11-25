@@ -104,6 +104,20 @@ void DoubleTakeProcessor::getStateInformation (juce::MemoryBlock& dest)
     if (auto xml = state.createXml()) copyXmlToBinary (*xml, dest);
 }
 
+// After replaceState, push every stored value into its parameter explicitly. JUCE skips parameters whose
+// cached plain value already matches, which leaves on/off parameters holding an in-between normalised
+// value if the host set one; this makes a restored session exact.
+static void forceParametersFromState (juce::AudioProcessorValueTreeState& apvts)
+{
+    for (auto* rp : apvts.processor.getParameters())
+        if (auto* prm = dynamic_cast<juce::RangedAudioParameter*> (rp))
+        {
+            const auto child = apvts.state.getChildWithProperty ("id", prm->getParameterID());
+            if (child.isValid() && child.hasProperty ("value"))
+                prm->setValueNotifyingHost (prm->convertTo0to1 ((float) child.getProperty ("value")));
+        }
+}
+
 void DoubleTakeProcessor::setStateInformation (const void* data, int size)
 {
     if (auto xml = getXmlFromBinary (data, size))
@@ -112,6 +126,7 @@ void DoubleTakeProcessor::setStateInformation (const void* data, int size)
             auto t = juce::ValueTree::fromXml (*xml);
             currentPreset = juce::jlimit (0, (int) dtPresets().size() - 1, (int) t.getProperty ("preset", 0));
             apvts.replaceState (t);
+            forceParametersFromState (apvts);
         }
 }
 
