@@ -26,6 +26,11 @@ an opto-cell response around 200 Hz (low notes ripple the gain, highs don't), an
 for the measured 2nd-harmonic colour. Matches the reference within 0.5 dB on the compression curve in every mode
 and within about 10 % on release timing (`bt_dsp_test`).
 
+## Black Tube voicing
+On top of the measured model, whenever the unit is in: **+0.5 dB at the bottom** (low shelf, body),
+**+0.5 dB around 2 kHz** (presence), and a gentle **asymmetric tube stage** for extra texture —
+2nd harmonic about −65 dB at −12 dBFS rising to about −56 dB at −3 dBFS, with a little 3rd; vintage is about 5 dB richer.
+
 ## Build
 Built together with Compchild from the top-level CMakeLists.txt; targets `BlackTube_AU`, `BlackTube_VST3`,
 `bt_dsp_test`, `bt_render` (offline renderer for measurements), and `bt_snapshot` with `-DCC_TOOLS=ON`.

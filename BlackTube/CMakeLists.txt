@@ -1,5 +1,5 @@
 # Black Tube — optical tube compressor (AU / VST3). Added to the build from the top-level CMakeLists.txt.
-set(BT_VERSION 1.0.0)
+set(BT_VERSION 1.1.0)
 
 juce_add_plugin(BlackTube
     VERSION                     ${BT_VERSION}

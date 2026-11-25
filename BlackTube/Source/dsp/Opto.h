@@ -15,6 +15,11 @@
 //   vintage   : -0.79 dB, 2nd-order low cut near 18 Hz, gentle top roll-off, half-wave detector
 //               (gain ripple at the fundamental gives the measured 2nd-harmonic colour when compressing)
 //   modern    : clean, flat, -0.08 dB
+//
+// Black Tube voicing (added on top of the measured model, on purpose):
+//   +0.5 dB at the bottom (0.7 dB low shelf at 110 Hz, body), +0.5 dB bell at 2 kHz (presence),
+//   and a gentle asymmetric tube stage for a little more 2nd/3rd-harmonic texture
+//   (2nd harmonic about -65 dB at -12 dBFS, -56 dB at -3 dBFS; vintage about 5 dB richer). Active whenever the unit is in.
 #include <cmath>
 #include <algorithm>
 #include <atomic>
@@ -112,6 +117,22 @@ namespace bt
             b0 = b1 = (float) (k / (1.0 + k)); b2 = 0; a1 = (float) ((k - 1.0) / (k + 1.0)); a2 = 0;
         }
         void bypass() { b0 = 1; b1 = b2 = a1 = a2 = 0; }
+        void lowShelf (double sr, double f, double gainDb, double slope = 0.8)
+        {
+            const double A = std::pow (10.0, gainDb / 40.0), w = 2.0 * 3.141592653589793 * f / sr, c = std::cos (w), sn = std::sin (w);
+            const double al = sn / 2.0 * std::sqrt ((A + 1.0 / A) * (1.0 / slope - 1.0) + 2.0), sa = 2.0 * std::sqrt (A) * al;
+            const double a0 = (A + 1) + (A - 1) * c + sa;
+            b0 = (float) (A * ((A + 1) - (A - 1) * c + sa) / a0); b1 = (float) (2 * A * ((A - 1) - (A + 1) * c) / a0);
+            b2 = (float) (A * ((A + 1) - (A - 1) * c - sa) / a0); a1 = (float) (-2 * ((A - 1) + (A + 1) * c) / a0);
+            a2 = (float) (((A + 1) + (A - 1) * c - sa) / a0);
+        }
+        void peak (double sr, double f, double q, double gainDb)
+        {
+            const double A = std::pow (10.0, gainDb / 40.0), w = 2.0 * 3.141592653589793 * f / sr, c = std::cos (w), al = std::sin (w) / (2.0 * q);
+            const double a0 = 1 + al / A;
+            b0 = (float) ((1 + al * A) / a0); b1 = (float) (-2 * c / a0); b2 = (float) ((1 - al * A) / a0);
+            a1 = b1; a2 = (float) ((1 - al / A) / a0);
+        }
     };
 
     // ---- the compressor ---------------------------------------------------------------------------
@@ -126,6 +147,9 @@ namespace bt
             {
                 vintHp[c].highpass (sr, 18.0, 0.62);
                 vintLp[c].lowpass1 (sr, 36000.0);
+                body[c].lowShelf (sr, bodyHz, bodyDb);
+                presence[c].peak (sr, presenceHz, presenceQ, presenceDb);
+                dcBlock[c].highpass (sr, 6.0, 0.55);
             }
             lastLowCut = -1;
             reset();
@@ -133,7 +157,7 @@ namespace bt
         void reset()
         {
             eMan = eFix = 0.0f; grNow = 0.0f; cell = 0.0f;
-            for (auto* b : { &vintHp[0], &vintHp[1], &vintLp[0], &vintLp[1], &scHp[0], &scHp[1] }) b->reset();
+            for (auto* b : { &vintHp[0], &vintHp[1], &vintLp[0], &vintLp[1], &scHp[0], &scHp[1], &body[0], &body[1], &presence[0], &presence[1], &dcBlock[0], &dcBlock[1] }) b->reset();
             meterGR.store (0.0f); meterIn.store (-100.0f); meterOut.store (-100.0f);
         }
 
@@ -144,6 +168,10 @@ namespace bt
         float asymModern = 0.08f, asymVintage = 0.55f;   // share of half-wave detection -> 2nd harmonic
         float cellHz = 200.0f;                           // opto cell response: smooths gain ripple above this
         float fixedCellHz = 4000.0f;
+
+        // Black Tube voicing
+        float bodyDb = 0.7f, bodyHz = 110.0f, presenceDb = 0.55f, presenceHz = 2000.0f, presenceQ = 0.7f;
+        float tubeDrive = 0.14f, tubeBias = 0.22f, vintageDriveScale = 1.35f;
 
         // meters (written by process, read by the editor)
         std::atomic<float> meterGR { 0.0f }, meterIn { -100.0f }, meterOut { -100.0f };
@@ -201,8 +229,15 @@ namespace bt
                 inSq += 0.5f * (l * l + r * r);
                 grMax = std::min (grMax, gr);
 
-                float ol = (mix * cl + (1.0f - mix) * l) * outG;
-                float orr = (mix * cr + (1.0f - mix) * r) * outG;
+                float ol = mix * cl + (1.0f - mix) * l;
+                float orr = mix * cr + (1.0f - mix) * r;
+                if (enabled)
+                {
+                    const float d = tubeDrive * (s.vintage ? vintageDriveScale : 1.0f);
+                    ol  = dcBlock[0].process (tube (presence[0].process (body[0].process (ol)),  d));
+                    orr = dcBlock[1].process (tube (presence[1].process (body[1].process (orr)), d));
+                }
+                ol *= outG; orr *= outG;
                 outSq += 0.5f * (ol * ol + orr * orr);
                 left[i] = ol;
                 if (numCh == 2) right[i] = orr;
@@ -234,13 +269,19 @@ namespace bt
                 for (auto& f : scHp) { if (s.lowCut > 0) f.highpass (sr, s.lowCut == 1 ? 80.0 : 220.0, 0.707); else f.bypass(); f.reset(); }
             }
         }
+        // asymmetric tube curve with unity small-signal gain: more 2nd harmonic than 3rd, rising with level
+        float tube (float x, float d) const
+        {
+            const float b = tubeBias, tb = std::tanh (d * b), slope = d * (1.0f - tb * tb);
+            return (std::tanh (d * (x + b)) - tb) / slope;
+        }
         float coef (float seconds) const { return 1.0f - std::exp (-1.0f / (seconds * (float) sr)); }
 
         double sr = 48000.0;
         float smoothA = 0.001f, outG = 1.0f, mix = 1.0f;
         float eMan = 0.0f, eFix = 0.0f, grNow = 0.0f, wFix = 0.0f, cell = 0.0f, aCell = 0.03f;
         float aAttMan = 0.01f, aRelMan = 0.001f, aAttFix = 0.1f, aRelFix = 0.1f;
-        Biquad vintHp[2], vintLp[2], scHp[2];
+        Biquad vintHp[2], vintLp[2], scHp[2], body[2], presence[2], dcBlock[2];
         int lastLowCut = -1;
     };
 }

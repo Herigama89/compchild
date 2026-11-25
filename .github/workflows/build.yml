@@ -60,17 +60,17 @@ jobs:
           cp -R "build/BlackTube/BlackTube_artefacts/Release/VST3/Black Tube.vst3" $OUT/root/vst3/
           cp -R "build/BlackTube/BlackTube_artefacts/Release/AU/Black Tube.component" $OUT/root/au/
           codesign --force --deep -s - "$OUT/root/vst3/Black Tube.vst3" "$OUT/root/au/Black Tube.component"
-          pkgbuild --root $OUT/root/vst3 --install-location "/Library/Audio/Plug-Ins/VST3" --identifier com.herigama.blacktube.vst3 --version 1.0.0 $OUT/vst3.pkg
+          pkgbuild --root $OUT/root/vst3 --install-location "/Library/Audio/Plug-Ins/VST3" --identifier com.herigama.blacktube.vst3 --version 1.1.0 $OUT/vst3.pkg
           pkgbuild --root $OUT/root/au   --install-location "/Library/Audio/Plug-Ins/Components" --identifier com.herigama.blacktube.au --version 1.0.0 $OUT/au.pkg
-          productbuild --package $OUT/vst3.pkg --package $OUT/au.pkg "dist/BlackTube-1.0.0-Mac.pkg"
-          (cd $OUT/root && zip -qry "../../BlackTube-1.0.0-Mac.zip" vst3 au)
+          productbuild --package $OUT/vst3.pkg --package $OUT/au.pkg "dist/BlackTube-1.1.0-Mac.pkg"
+          (cd $OUT/root && zip -qry "../../BlackTube-1.1.0-Mac.zip" vst3 au)
 
       - uses: actions/upload-artifact@v4
         with:
           name: BlackTube-Mac
           path: |
-            dist/BlackTube-1.0.0-Mac.pkg
-            dist/BlackTube-1.0.0-Mac.zip
+            dist/BlackTube-1.1.0-Mac.pkg
+            dist/BlackTube-1.1.0-Mac.zip
 
       - uses: actions/upload-artifact@v4
         with:
@@ -95,8 +95,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="blacktube-v1.0.0-build${{ github.run_number }}"
-          gh release create "$TAG" dist/BlackTube-1.0.0-Mac.pkg dist/BlackTube-1.0.0-Mac.zip \
-            --title "Black Tube 1.0.0 (build ${{ github.run_number }})" \
+          TAG="blacktube-v1.1.0-build${{ github.run_number }}"
+          gh release create "$TAG" dist/BlackTube-1.1.0-Mac.pkg dist/BlackTube-1.1.0-Mac.zip \
+            --title "Black Tube 1.1.0 (build ${{ github.run_number }})" \
             --notes "Mac installer: AU + VST3, universal (Apple Silicon + Intel). Ad-hoc signed — on first launch, if macOS blocks the installer, right-click it → Open." \
             --latest=false
