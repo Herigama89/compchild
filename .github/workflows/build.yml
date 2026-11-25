@@ -24,12 +24,13 @@ jobs:
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
 
       - name: Build
-        run: cmake --build build --config Release --target Compchild_AU Compchild_VST3 dsp_test VoxSqueeze_AU VoxSqueeze_VST3 vx_dsp_test -j 4
+        run: cmake --build build --config Release --target Compchild_AU Compchild_VST3 dsp_test VoxSqueeze_AU VoxSqueeze_VST3 vx_dsp_test DoubleTake_AU DoubleTake_VST3 dt_dsp_test -j 4
 
       - name: DSP tests
         run: |
           ./build/dsp_test
           ./build/VoxSqueeze/vx_dsp_test
+          ./build/DoubleTake/dt_dsp_test
 
       - name: Validate with pluginval
         continue-on-error: true
@@ -38,6 +39,7 @@ jobs:
           unzip -q pluginval.zip
           ./pluginval.app/Contents/MacOS/pluginval --strictness-level 8 --validate-in-process "build/Compchild_artefacts/Release/VST3/Compchild.vst3"
           ./pluginval.app/Contents/MacOS/pluginval --strictness-level 8 --validate-in-process "build/VoxSqueeze/VoxSqueeze_artefacts/Release/VST3/VoxSqueeze.vst3"
+          ./pluginval.app/Contents/MacOS/pluginval --strictness-level 8 --validate-in-process "build/DoubleTake/DoubleTake_artefacts/Release/VST3/DoubleTake.vst3"
 
       - name: Package (installer + zip)
         run: |
@@ -61,6 +63,17 @@ jobs:
           productbuild --package $OUT/vst3.pkg --package $OUT/au.pkg "dist/VoxSqueeze-1.0.0-Mac.pkg"
           (cd $OUT/root && zip -qry "../../dist/VoxSqueeze-1.0.0-Mac.zip" vst3 au)
 
+      - name: Package DoubleTake (installer + zip)
+        run: |
+          OUT=dist-dt; mkdir -p $OUT/root/vst3 $OUT/root/au
+          cp -R "build/DoubleTake/DoubleTake_artefacts/Release/VST3/DoubleTake.vst3" $OUT/root/vst3/
+          cp -R "build/DoubleTake/DoubleTake_artefacts/Release/AU/DoubleTake.component" $OUT/root/au/
+          codesign --force --deep -s - "$OUT/root/vst3/DoubleTake.vst3" "$OUT/root/au/DoubleTake.component"
+          pkgbuild --root $OUT/root/vst3 --install-location "/Library/Audio/Plug-Ins/VST3" --identifier com.herigama.doubletake.vst3 --version 1.0.0 $OUT/vst3.pkg
+          pkgbuild --root $OUT/root/au   --install-location "/Library/Audio/Plug-Ins/Components" --identifier com.herigama.doubletake.au --version 1.0.0 $OUT/au.pkg
+          productbuild --package $OUT/vst3.pkg --package $OUT/au.pkg "dist/DoubleTake-1.0.0-Mac.pkg"
+          (cd $OUT/root && zip -qry "../../dist/DoubleTake-1.0.0-Mac.zip" vst3 au)
+
       - uses: actions/upload-artifact@v4
         with:
           name: Compchild-Mac
@@ -75,13 +88,20 @@ jobs:
             dist/VoxSqueeze-1.0.0-Mac.pkg
             dist/VoxSqueeze-1.0.0-Mac.zip
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DoubleTake-Mac
+          path: |
+            dist/DoubleTake-1.0.0-Mac.pkg
+            dist/DoubleTake-1.0.0-Mac.zip
+
       - name: Publish release (download link)
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="v1.2.0-build${{ github.run_number }}"
-          gh release create "$TAG" dist/Compchild-1.2.0-Mac.pkg dist/Compchild-1.2.0-Mac.zip dist/VoxSqueeze-1.0.0-Mac.pkg dist/VoxSqueeze-1.0.0-Mac.zip \
+          gh release create "$TAG" dist/Compchild-1.2.0-Mac.pkg dist/Compchild-1.2.0-Mac.zip dist/VoxSqueeze-1.0.0-Mac.pkg dist/VoxSqueeze-1.0.0-Mac.zip dist/DoubleTake-1.0.0-Mac.pkg dist/DoubleTake-1.0.0-Mac.zip \
             --title "Compchild 1.2.0 (build ${{ github.run_number }})" \
-            --notes "Compchild + VoxSqueeze Mac installers: AU + VST3, universal (Apple Silicon + Intel). Ad-hoc signed — on first launch, if macOS blocks the installer, right-click it → Open." \
+            --notes "Compchild, VoxSqueeze and DoubleTake Mac installers: AU + VST3, universal (Apple Silicon + Intel). Ad-hoc signed — on first launch, if macOS blocks the installer, right-click it → Open." \
             --latest

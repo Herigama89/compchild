@@ -101,3 +101,4 @@ endif()
 
 # Second plugin in this repository
 add_subdirectory(VoxSqueeze)
+add_subdirectory(DoubleTake)

@@ -58,3 +58,22 @@ cmake --build build --config Release --target VoxSqueeze_AU VoxSqueeze_VST3 vx_d
 `-DCC_TOOLS=ON` also builds `vx_snapshot`, which renders the editor to a PNG (used for the manual pictures).
 
 The panel and fader-cap artwork in `VoxSqueeze/Assets/` come from the project owner's reference image; check its licence before distributing.
+
+---
+
+# DoubleTake
+
+2- or 4-voice doubler (AU / VST3, macOS universal) in the FL-style dark skin with console faders. Lives in `DoubleTake/`.
+
+## Controls
+- **Displays** — Stage (pan × delay), Time & Pitch (delay × detune, wobble range), Wet EQ (drag the L / H shelves)
+- **Direct** on/off, gain, pan · **Align** (delays the direct signal by the pitch shifter's ~12 ms lag; reported as latency) · **Feedback low-cut** · **Re-sync** modulation · **Low / high shelf** on the voices · **Mix** (0 = direct, 50 = both full, 100 = voices)
+- **Per voice** — on, gain, pan, delay 0–100 ms, feedback 0–90 %, octave −1/0/+1, detune ±50 ct, wobble depth 0–50 ct and rate 0.1–40 Hz
+- **Output** — WET and OUT console faders, stereo meter · **2 / 4 voices** · 8 factory presets · **?** opens the built-in manual (`DoubleTake/docs/manual.html`)
+
+## Build
+```
+cmake --build build --config Release --target DoubleTake_AU DoubleTake_VST3 dt_dsp_test
+./build/DoubleTake/dt_dsp_test
+```
+`-DCC_TOOLS=ON` also builds `dt_snapshot` (renders the editor to a PNG).
