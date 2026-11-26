@@ -114,7 +114,7 @@ jobs:
           key: juce-9.0.6-${{ runner.os }}
 
       - name: Configure
-        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+        run: cmake -B build -A x64
 
       - name: Build
         run: cmake --build build --config Release --target BlackTube_VST3 bt_dsp_test -- /m
@@ -136,7 +136,10 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
           Compress-Archive -Path "build\BlackTube\BlackTube_artefacts\Release\VST3\Black Tube.vst3" -DestinationPath "dist\BlackTube-1.1.0-Windows-VST3.zip"
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.0 /O"$PWD\dist" BlackTube\installer\BlackTube.iss
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          & $iscc /DAppVersion=1.1.0 /O"$PWD\dist" BlackTube\installer\BlackTube.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - uses: actions/upload-artifact@v4
         with:
