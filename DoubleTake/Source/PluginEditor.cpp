@@ -284,11 +284,10 @@ void Display::paint (juce::Graphics& g)
             const auto c = voiceCol[i - 1];
             const float x = 20.0f + pv (dtp::v (i, "delay")) / 100.0f * 280.0f;
             const float cents = pv (dtp::v (i, "detune")), depth = pv (dtp::v (i, "depth"));
-            const float rate = juce::jmin (6.0f, pv (dtp::v (i, "rate")));
             auto yOf = [] (float ct) { return 76.0f - juce::jlimit (-50.0f, 50.0f, ct) / 50.0f * 60.0f; };
             const float top = yOf (cents + depth), bot = yOf (cents - depth);
             g.setColour (c.withAlpha (on ? 0.35f : 0.08f)); g.fillRoundedRectangle (x - 2.0f, top, 4.0f, juce::jmax (0.5f, bot - top), 2.0f);
-            const float now = cents + depth * std::sin ((float) (lfoTime * rate * juce::MathConstants<double>::twoPi) + (float) i);
+            const float now = cents;   // dots stay where they are set; the bar shows the wobble range
             const auto r = juce::Rectangle<float> (14.0f, 14.0f).withCentre ({ x, yOf (now) });
             g.setColour (c.withAlpha (on ? 1.0f : 0.15f)); g.fillEllipse (r);
             g.setColour (deep); g.drawEllipse (r, 2.0f);

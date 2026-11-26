@@ -36,8 +36,8 @@ namespace dtp
         F ("out", "Output Level", { -80.0f, 10.0f, 0.1f }, 0.0f, dbTxt);
 
         // defaults = the "Natural Double" preset for voices 1-2, a wider pair for 3-4
-        const float def[4][8] = { { -3, -60, 12, 0, 9, 4, 0.6f, 0 }, { -3, 60, 19, 0, -11, 5, 0.45f, 0 },
-                                  { -6, -100, 26, 0, 17, 6, 0.8f, 0 }, { -6, 100, 33, 0, -15, 6, 0.7f, 0 } };
+        const float def[4][8] = { { -3, -60, 12, 0, 9, 0, 0.6f, 0 }, { -3, 60, 19, 0, -11, 0, 0.45f, 0 },
+                                  { -6, -100, 26, 0, 17, 0, 0.8f, 0 }, { -6, 100, 33, 0, -15, 0, 0.7f, 0 } };   // no wobble by default
         for (int i = 1; i <= 4; ++i)
         {
             const auto* d = def[i - 1];
