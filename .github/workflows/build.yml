@@ -100,3 +100,59 @@ jobs:
             --title "Black Tube 1.1.0 (build ${{ github.run_number }})" \
             --notes "Mac installer: AU + VST3, universal (Apple Silicon + Intel). Ad-hoc signed — on first launch, if macOS blocks the installer, right-click it → Open." \
             --latest=false
+
+  windows:
+    name: Windows (Black Tube VST3, x64) + installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache JUCE download
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: juce-9.0.6-${{ runner.os }}
+
+      - name: Configure
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        run: cmake --build build --config Release --target BlackTube_VST3 bt_dsp_test -- /m
+
+      - name: Black Tube DSP tests
+        run: .\build\BlackTube\Release\bt_dsp_test.exe
+
+      - name: Validate Black Tube with pluginval
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip
+          Expand-Archive pluginval.zip -DestinationPath pluginval
+          .\pluginval\pluginval.exe --strictness-level 8 --validate-in-process "build\BlackTube\BlackTube_artefacts\Release\VST3\Black Tube.vst3"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Package Black Tube (installer + zip)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path "build\BlackTube\BlackTube_artefacts\Release\VST3\Black Tube.vst3" -DestinationPath "dist\BlackTube-1.1.0-Windows-VST3.zip"
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.0 /O"$PWD\dist" BlackTube\installer\BlackTube.iss
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BlackTube-Windows
+          path: |
+            dist/BlackTube-1.1.0-Windows-Setup.exe
+            dist/BlackTube-1.1.0-Windows-VST3.zip
+
+      - name: Publish Black Tube Windows release (download link)
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="blacktube-win-v1.1.0-build${{ github.run_number }}"
+          gh release create "$TAG" dist/BlackTube-1.1.0-Windows-Setup.exe dist/BlackTube-1.1.0-Windows-VST3.zip \
+            --title "Black Tube 1.1.0 for Windows (build ${{ github.run_number }})" \
+            --notes "Windows installer: VST3, 64-bit. Installs to C:\\Program Files\\Common Files\\VST3. Not code-signed — if SmartScreen warns, click More info → Run anyway." \
+            --latest=false

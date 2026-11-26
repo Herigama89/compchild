@@ -1,5 +1,6 @@
 // Renders the Black Tube editor to a PNG without a host (interface checks).
 // usage: bt_snapshot out.png [grDb] — feeds a sine so the meter and scope have something to show
+#define _USE_MATH_DEFINES
 #include "../Source/PluginProcessor.h"
 #include "../Source/PluginEditor.h"
 #include <cstdlib>

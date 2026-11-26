@@ -1,6 +1,6 @@
 # Black Tube
 
-Stereo optical tube compressor (AU / VST3, macOS universal), modelled on a CL 1B-style opto compressor,
+Stereo optical tube compressor (AU / VST3 for macOS universal, VST3 for Windows x64), modelled on a CL 1B-style opto compressor,
 on a black rack panel with a VU meter, neon-lit knobs and a live dynamics scope.
 
 ## Controls

@@ -1,5 +1,6 @@
 // Black Tube DSP checks against the measured reference (1 kHz sine, attack 5, release 5).
 // Reference values: steady gain of the reference plugin at each input level (BlackTube/docs/measurements.json).
+#define _USE_MATH_DEFINES
 #include "../Source/dsp/Opto.h"
 #include <cstdio>
 #include <cmath>
